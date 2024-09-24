@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flying Frogs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bebas Neue', cursive; /* Используем Bebas Neue */
+            background-color: black; /* Черный фон */
+            color: white; /* Белый текст */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Запрещаем прокрутку */
+        }
+        #cooldown {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.8); /* Полупрозрачный белый */
+        }
+        #attempts {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: yellow; /* Желтый цвет */
+        }
+        #counter {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #4caf50; /* Мягкий зеленый цвет */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        #startButton {
+            padding: 10px 20px;
+            font-size: 1.5em;
+            color: white;
+            background-color: #4caf50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Bebas Neue', cursive; /* Применяем Bebas Neue к кнопке */
+        }
+        #startButton.disabled {
+            background-color: gray; /* Серый цвет кнопки */
+            cursor: not-allowed;
+        }
+        #timer {
+            font-size: 1.2em;
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.8); /* Полупрозрачный белый */
+        }
+        .frog {
+            position: absolute;
+            font-size: 50px;
+            cursor: pointer;
+        }
+        .no-scroll {
+            overflow: hidden; /* Запрещаем прокрутку */
+            height: 100vh; /* Устанавливаем фиксированную высоту */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="cooldown">Next attempt in: 15:00</div>
+    <div id="attempts">🎫 3</div>
+    <div id="counter">FROGS: 0</div>
+    <button id="startButton">Start the Hunt</button>
+    <div id="timer"></div>
+
+    <script>
+        let score = 0;
+        let attempts = 3;
+        let isHunting = false;
+        let timerInterval;
+        let timeRemaining = 20;
+        let cooldownInterval;
+        let cooldownTime = 900; // 15 minutes in seconds
+        let cooldownTimer = cooldownTime;
+
+        function createFrog() {
+            const element = createElement('frog', '🐸');
+            document.body.appendChild(element);
+            animateElement(element);
+        }
+
+        function createElement(className, innerText) {
+            const element = document.createElement('div');
+            element.className = className;
+            element.innerText = innerText;
+            return element;
+        }
+
+        function animateElement(element) {
+            const isMovingRight = Math.random() < 0.5; // Random direction
+            element.style.left = isMovingRight ? '-50px' : window.innerWidth + 'px'; // Starting position
+            element.style.bottom = '0px'; // Starting height
+
+            // Animation of flight
+            let positionX = parseInt(element.style.left);
+            let positionY = 0;
+            const gravity = 0.2; // Gravity force
+            let velocityY = Math.random() * 10 + 10; // Increased initial vertical speed
+            const velocityX = isMovingRight ? 5 : -5; // Increased horizontal speed
+
+            const moveElement = () => {
+                positionY += velocityY;
+                velocityY -= gravity; // Decrease speed for falling
+                positionX += velocityX;
+
+                element.style.bottom = positionY + 'px';
+                element.style.left = positionX + 'px';
+
+                // Check if the element has fallen below the screen or gone out of bounds
+                if (positionY < 0 || positionX < -50 || positionX > window.innerWidth) {
+                    element.remove();
+                } else {
+                    requestAnimationFrame(moveElement); // Continue moving
+                }
+            };
+
+            moveElement();
+
+            // Remove on click without confirmation
+            element.onclick = function() {
+                element.remove();
+                score++; // Increase score without confirmation
+                document.getElementById('counter').innerText = 'FROGS: ' + score;
+            };
+        }
+
+        function startHunt() {
+            if (isHunting || attempts <= 0) return; // Prevent multiple starts
+
+            attempts--; // Decrease attempts immediately
+            document.getElementById('attempts').innerText = '🎫 ' + attempts;
+
+            isHunting = true;
+            document.getElementById('counter').innerText = 'FROGS: ' + score;
+            timeRemaining = 20; // Reset time
+            document.getElementById('timer').innerText = `Time: ${timeRemaining}s`;
+            document.getElementById('startButton').classList.add('disabled');
+            document.body.classList.add('no-scroll'); // Disable scrolling
+
+            // Start hunting timer
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                document.getElementById('timer').innerText = `Time: ${timeRemaining}s`;
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    endHunt();
+                }
+            }, 1000);
+
+            // Create frogs every 250 ms
+            const frogInterval = setInterval(() => {
+                if (isHunting) {
+                    createFrog();
+                } else {
+                    clearInterval(frogInterval);
+                }
+            }, 250);
+        }
+
+        function endHunt() {
+            isHunting = false;
+            document.getElementById('startButton').classList.remove('disabled');
+            document.getElementById('timer').innerText = '';
+            document.body.classList.remove('no-scroll'); // Enable scrolling
+        }
+
+        function startCooldown() {
+            cooldownTimer = cooldownTime;
+            document.getElementById('cooldown').innerText = `Next attempt in: ${formatTime(cooldownTimer)}`;
+            cooldownInterval = setInterval(() => {
+                cooldownTimer--;
+                document.getElementById('cooldown').innerText = `Next attempt in: ${formatTime(cooldownTimer)}`;
+                if (cooldownTimer <= 0) {
+                    clearInterval(cooldownInterval);
+                    attempts++; // Add one attempt
+                    cooldownTimer = cooldownTime; // Reset timer
+                    document.getElementById('attempts').innerText = '🎫 ' + attempts;
+                    document.getElementById('cooldown').innerText = 'Next attempt in: 15:00';
+                }
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Start cooldown timer immediately on page load
+        startCooldown();
+
+        document.getElementById('startButton').onclick = startHunt;
+    </script>
+
+</body>
+</html>
